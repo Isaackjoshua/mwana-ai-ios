@@ -146,7 +146,7 @@ class _ExportScreenState extends State<ExportScreen> {
         ),
         const SizedBox(height: 12),
         TextButton(
-          onPressed: () => Navigator.popUntil(context, ModalRoute.withName('/input')),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/input', (_) => false),
           child: const Text('Start New Analysis'),
         ),
       ],

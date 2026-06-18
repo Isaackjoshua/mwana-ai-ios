@@ -35,9 +35,10 @@ flutter:
     - assets/models/
     - assets/icons/
 
-flutter_icons:
+flutter_launcher_icons:
   ios: true
   android: false
+  remove_alpha_ios: true
   image_path: "assets/icons/app_icon.png"
 
 dependency_overrides:

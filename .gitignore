@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Large model files — download separately (see README)
+assets/models/*.onnx
+assets/models/*.litertlm
+assets/models/*.task
+
+# Xcode SPM
+ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+ios/Runner.xcworkspace/xcshareddata/swiftpm/
+
+# CocoaPods
+ios/Pods/
+ios/.symlinks/
