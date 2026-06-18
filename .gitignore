@@ -56,3 +56,6 @@ ios/Runner.xcworkspace/xcshareddata/swiftpm/
 # CocoaPods
 ios/Pods/
 ios/.symlinks/
+
+# Credentials / secrets
+packages/flutter_gemma/example/config.json
