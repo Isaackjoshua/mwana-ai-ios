@@ -1,0 +1,56 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_gemma (0.16.1):
+    - Flutter
+    - MediaPipeTasksGenAI (= 0.10.33)
+    - MediaPipeTasksGenAIC (= 0.10.33)
+  - flutter_onnxruntime (0.0.1):
+    - Flutter
+    - onnxruntime-objc (= 1.22.0)
+  - large_file_handler (0.0.1):
+    - Flutter
+  - MediaPipeTasksGenAI (0.10.33):
+    - MediaPipeTasksGenAIC (= 0.10.33)
+  - MediaPipeTasksGenAIC (0.10.33)
+  - onnxruntime-c (1.22.0)
+  - onnxruntime-objc (1.22.0):
+    - onnxruntime-objc/Core (= 1.22.0)
+  - onnxruntime-objc/Core (1.22.0):
+    - onnxruntime-c (= 1.22.0)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_gemma (from `.symlinks/plugins/flutter_gemma/ios`)
+  - flutter_onnxruntime (from `.symlinks/plugins/flutter_onnxruntime/ios`)
+  - large_file_handler (from `.symlinks/plugins/large_file_handler/ios`)
+
+SPEC REPOS:
+  trunk:
+    - MediaPipeTasksGenAI
+    - MediaPipeTasksGenAIC
+    - onnxruntime-c
+    - onnxruntime-objc
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_gemma:
+    :path: ".symlinks/plugins/flutter_gemma/ios"
+  flutter_onnxruntime:
+    :path: ".symlinks/plugins/flutter_onnxruntime/ios"
+  large_file_handler:
+    :path: ".symlinks/plugins/large_file_handler/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_gemma: 8ded1e5c49942dd1494d273f33bba4bdf4c76160
+  flutter_onnxruntime: 515c2ab17b67fb027964ebbf2d02329771a482de
+  large_file_handler: b37481e9b4972562ffcdc8f75700f47cd592bcec
+  MediaPipeTasksGenAI: 8eed8e6d03fe26d30c4205cb5295ec7b394432ad
+  MediaPipeTasksGenAIC: cb098ecea44e248efe8fe7e2f62b4cb0df781802
+  onnxruntime-c: 7f778680e96145956c0a31945f260321eed2611a
+  onnxruntime-objc: 83d28b87525bd971259a66e153ea32b5d023de19
+
+PODFILE CHECKSUM: 7e661ff2f6a8b6bb9af59a51758338d4b79e67be
+
+COCOAPODS: 1.16.2

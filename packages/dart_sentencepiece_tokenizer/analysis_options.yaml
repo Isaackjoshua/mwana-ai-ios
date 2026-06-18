@@ -1,0 +1,37 @@
+# Analysis options for dart_sentencepiece_tokenizer
+# https://dart.dev/guides/language/analysis-options
+
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "build/**"
+    - ".dart_tool/**"
+    - "benchmark/**"
+
+linter:
+  rules:
+    # Error prevention
+    - always_declare_return_types
+    - avoid_returning_null_for_future
+    - cancel_subscriptions
+    - close_sinks
+    - throw_in_finally
+
+    # Style
+    - avoid_bool_literals_in_conditional_expressions
+    - avoid_escaping_inner_quotes
+    - avoid_multiple_declarations_per_line
+    - avoid_unused_constructor_parameters
+    - eol_at_end_of_file
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_locals
+    - prefer_single_quotes
+    - type_annotate_public_apis
+    - unawaited_futures
+    - unnecessary_await_in_return
+    - unnecessary_parenthesis
+    - use_is_even_rather_than_modulo

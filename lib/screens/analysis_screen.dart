@@ -1,0 +1,156 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
+import '../models/classification_result.dart';
+import '../models/inference_result.dart';
+import '../services/onnx_inference_service.dart';
+import '../services/overlay_renderer.dart';
+import '../widgets/confidence_bar_widget.dart';
+import '../widgets/loading_overlay_widget.dart';
+
+class AnalysisScreen extends StatefulWidget {
+  final String imagePath;
+  const AnalysisScreen({super.key, required this.imagePath});
+
+  @override
+  State<AnalysisScreen> createState() => _AnalysisScreenState();
+}
+
+class _AnalysisScreenState extends State<AnalysisScreen> {
+  final _inferenceService = OnnxInferenceService();
+  final _overlayRenderer = OverlayRenderer();
+
+  InferenceResult? _result;
+  Uint8List? _overlayBytes;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _runInference();
+  }
+
+  Future<void> _runInference() async {
+    try {
+      final result = await _inferenceService.runInference(widget.imagePath);
+
+      final raw = await img.decodeImageFile(widget.imagePath);
+      final overlayBytes = raw != null
+          ? _overlayRenderer.renderOverlay(
+              originalImage: raw,
+              binaryMask: result.segmentation.binaryMask,
+              maskColor: result.classification.predictedIndex == 1
+                  ? img.ColorRgba8(220, 38, 38, 255)
+                  : img.ColorRgba8(20, 184, 166, 255),
+              opacity: 0.5,
+            )
+          : Uint8List(0);
+
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+        _overlayBytes = overlayBytes;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Inference failed: $e';
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Analysis Results')),
+      body: Stack(
+        children: [
+          if (_error != null)
+            Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+          else if (_result != null)
+            _buildResults()
+          else
+            const SizedBox.shrink(),
+          if (_loading)
+            const LoadingOverlayWidget(message: 'Running AI inference...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResults() {
+    final cls = _result!.classification;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(8),
+          color: Colors.orange.shade100,
+          child: const Text(
+            '⚠️ AI-ASSISTED — Not a clinical diagnosis. Requires radiologist review.',
+            style: TextStyle(fontSize: 12, color: Colors.deepOrange),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (_overlayBytes != null && _overlayBytes!.isNotEmpty)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(_overlayBytes!, height: 300, fit: BoxFit.contain),
+          )
+        else
+          Image.file(File(widget.imagePath), height: 300, fit: BoxFit.contain),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  cls.predictedClass,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                Text(cls.biRads.label),
+                const SizedBox(height: 16),
+                ConfidenceBarWidget(
+                  label: 'Benign',
+                  probability: cls.benignProb,
+                  isSelected: cls.predictedIndex == 0,
+                ),
+                ConfidenceBarWidget(
+                  label: 'Malignant',
+                  probability: cls.malignantProb,
+                  isSelected: cls.predictedIndex == 1,
+                ),
+                ConfidenceBarWidget(
+                  label: 'Normal',
+                  probability: cls.normalProb,
+                  isSelected: cls.predictedIndex == 2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: () => Navigator.pushNamed(
+            context,
+            '/report',
+            arguments: {
+              'inferenceResult': _result,
+              'overlayBytes': _overlayBytes,
+            },
+          ),
+          icon: const Icon(Icons.description),
+          label: const Text('Generate Report'),
+        ),
+      ],
+    );
+  }
+}

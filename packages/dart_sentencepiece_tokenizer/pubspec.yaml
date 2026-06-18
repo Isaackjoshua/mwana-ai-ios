@@ -1,0 +1,21 @@
+name: dart_sentencepiece_tokenizer
+description: A lightweight, pure Dart implementation of SentencePiece tokenizer. Supports BPE (Gemma) and Unigram (Llama) algorithms.
+version: 1.3.0
+repository: https://github.com/brody-0125/dart_sentencepiece_tokenizer
+issue_tracker: https://github.com/brody-0125/dart_sentencepiece_tokenizer/issues
+topics:
+  - nlp
+  - sentencepiece
+  - tokenizer
+  - machine-learning
+  - llm
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  # No external dependencies - pure Dart implementation
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

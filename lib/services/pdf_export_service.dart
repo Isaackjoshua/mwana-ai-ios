@@ -1,0 +1,177 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' show Rect;
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
+import '../models/classification_result.dart';
+import '../models/inference_result.dart';
+import '../models/report_result.dart';
+import '../models/patient_context.dart';
+
+const _disclaimer =
+    '[!] AI-ASSISTED REPORT - Not a clinical diagnosis. '
+    'Requires review by a qualified radiologist.';
+
+/// Builds a clinical PDF report with embedded overlay, AI findings, and report text.
+///
+/// On iOS, call [sharePdf] to present the system share sheet — this is the
+/// correct way to export documents on iOS (no direct file manager access).
+class PdfExportService {
+  /// Generates a PDF document and returns its raw bytes.
+  Future<Uint8List> generatePdf({
+    required InferenceResult inferenceResult,
+    required ReportResult reportResult,
+    required Uint8List overlayImageBytes,
+    PatientContext? patient,
+  }) async {
+    final doc = pw.Document();
+    final cls = inferenceResult.classification;
+
+    pw.MemoryImage? overlayImage;
+    if (overlayImageBytes.isNotEmpty) {
+      overlayImage = pw.MemoryImage(overlayImageBytes);
+    }
+
+    final generatedAt = DateTime.now().toLocal();
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        footer: (context) => pw.Container(
+          alignment: pw.Alignment.center,
+          margin: const pw.EdgeInsets.only(top: 8),
+          child: pw.Text(
+            _disclaimer,
+            style: const pw.TextStyle(
+              fontSize: 8,
+              color: PdfColors.red700,
+              fontWeight: pw.FontWeight.bold,
+            ),
+            textAlign: pw.TextAlign.center,
+          ),
+        ),
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Text(
+              'Mwana-AI — AI-Assisted Breast Ultrasound Report',
+              style: const pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Text(
+            'Generated: $generatedAt',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.red700),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+            ),
+            child: pw.Text(
+              _disclaimer,
+              style: const pw.TextStyle(
+                color: PdfColors.red700,
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 10,
+              ),
+            ),
+          ),
+          pw.SizedBox(height: 16),
+
+          if (patient != null && patient.hasData) ...[
+            pw.Header(level: 1, text: 'Patient Information'),
+            pw.TableHelper.fromTextArray(
+              data: [
+                ['Patient', patient.patientName ?? '-'],
+                ['Date of Birth', patient.dateOfBirth ?? '-'],
+                ['Exam Date', patient.examDate ?? '-'],
+                ['Side', patient.side ?? '-'],
+                ['Referring Clinician', patient.referringClinician ?? '-'],
+              ],
+            ),
+            pw.SizedBox(height: 16),
+          ],
+
+          pw.Header(level: 1, text: 'AI Model Findings'),
+          pw.TableHelper.fromTextArray(
+            headers: ['Parameter', 'Value'],
+            data: [
+              ['Predicted Class', cls.predictedClass],
+              ['Benign Probability', '${(cls.benignProb * 100).toStringAsFixed(1)}%'],
+              ['Malignant Probability', '${(cls.malignantProb * 100).toStringAsFixed(1)}%'],
+              ['Normal Probability', '${(cls.normalProb * 100).toStringAsFixed(1)}%'],
+              ['BI-RADS Category', cls.biRads.label],
+              ['Model Version', 'ResNet50 U-Net v10 (ONNX FP32)'],
+              ['Inference Latency', '${inferenceResult.latencyMs} ms'],
+            ],
+          ),
+          pw.SizedBox(height: 16),
+
+          if (overlayImage != null) ...[
+            pw.Header(level: 1, text: 'Segmentation Overlay'),
+            pw.Image(overlayImage, width: 256, height: 256),
+            pw.SizedBox(height: 16),
+          ],
+
+          pw.Header(level: 1, text: 'Clinical Report'),
+          _section('Clinical Indication', reportResult.clinicalIndication),
+          _section('Findings', reportResult.findings),
+          _section('BI-RADS Assessment', reportResult.biRadsAssessment),
+          _section('Impression', reportResult.impression),
+          _section('Recommendation', reportResult.recommendation),
+
+          pw.SizedBox(height: 16),
+          pw.Text(
+            reportResult.isAiGenerated
+                ? 'Report generated by on-device Gemma 4 AI.'
+                : 'Report generated from template (AI report generation unavailable).',
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+          ),
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  /// Saves PDF bytes to a temp file and presents the iOS share sheet.
+  ///
+  /// [rect] is the bounding box of the share button (required for iPad popover).
+  Future<void> sharePdf(
+    Uint8List pdfBytes, {
+    String filename = 'mwana_ai_report.pdf',
+    Rect? rect,
+  }) async {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/$filename');
+    await file.writeAsBytes(pdfBytes);
+
+    final shareResult = await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'application/pdf')],
+      subject: 'Mwana-AI Breast Ultrasound Report',
+      sharePositionOrigin: rect,
+    );
+    if (shareResult.status == ShareResultStatus.success ||
+        shareResult.status == ShareResultStatus.dismissed) {
+      await file.delete().catchError((_) => file);
+    }
+  }
+
+  pw.Widget _section(String title, String content) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          title,
+          style: const pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+        ),
+        pw.SizedBox(height: 2),
+        pw.Text(content, style: const pw.TextStyle(fontSize: 10)),
+        pw.SizedBox(height: 10),
+      ],
+    );
+  }
+}
