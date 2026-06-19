@@ -50,7 +50,7 @@ The model file is excluded from git (190 MB). Copy it into the assets folder:
 cp /path/to/model_simplified.onnx assets/models/
 ```
 
-The source model lives at `BUSI.project/BUSI/model_export/model_simplified.onnx` in the companion training repository.
+The source model lives at `BUSI.project/BUSI/model_export/model_simplified.onnx` in the companion training repository(https://github.com/Isaackjoshua/Breast_Ultrasound_Images_Model).
 
 ### 3. Build and run
 
