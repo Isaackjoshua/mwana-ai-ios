@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/image_picker_service.dart';
 
@@ -62,6 +63,17 @@ class _InputSelectionScreenState extends State<InputSelectionScreen> {
               label: 'Files',
               onTap: _loading ? null : () => _pick(ImageInputMode.file),
             ),
+            // Butterfly iQ probe: physical device only (not simulator)
+            if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ...[
+              const SizedBox(height: 16),
+              _InputButton(
+                icon: Icons.sensors,
+                label: 'Butterfly iQ Probe',
+                onTap: _loading
+                    ? null
+                    : () => Navigator.pushNamed(context, '/probe-connect'),
+              ),
+            ],
             if (_loading) ...[
               const SizedBox(height: 24),
               const CircularProgressIndicator(),

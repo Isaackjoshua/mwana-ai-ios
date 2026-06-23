@@ -9,6 +9,9 @@ import 'screens/image_confirm_screen.dart';
 import 'screens/analysis_screen.dart';
 import 'screens/report_screen.dart';
 import 'screens/export_screen.dart';
+import 'screens/probe_connect_screen.dart';
+import 'screens/probe_imaging_screen.dart';
+import 'services/butterfly_probe_service.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -66,6 +69,16 @@ class App extends StatelessWidget {
                 reportResult: reportResult,
                 overlayBytes: args?['overlayBytes'] as Uint8List?,
               ),
+            );
+          case '/probe-connect':
+            return MaterialPageRoute(builder: (_) => const ProbeConnectScreen());
+          case '/probe-imaging':
+            final service = settings.arguments as ButterflyProbeService?;
+            if (service == null) {
+              return MaterialPageRoute(builder: (_) => const SplashScreen());
+            }
+            return MaterialPageRoute(
+              builder: (_) => ProbeImagingScreen(service: service),
             );
           default:
             return MaterialPageRoute(builder: (_) => const SplashScreen());

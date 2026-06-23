@@ -59,3 +59,4 @@ ios/.symlinks/
 
 # Credentials / secrets
 packages/flutter_gemma/example/config.json
+ios/Runner/ButterflyConfig.xcconfig
