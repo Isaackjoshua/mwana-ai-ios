@@ -5,6 +5,7 @@ import '../models/section_analysis.dart';
 import '../services/local_gemma_report_service.dart';
 import '../widgets/confidence_bar_widget.dart';
 import '../widgets/loading_overlay_widget.dart';
+import 'image_viewer_screen.dart';
 
 /// Shows per-section findings from a multi-section probe examination,
 /// an overall worst-case BI-RADS assessment, and an editable cumulative report.
@@ -24,6 +25,7 @@ class _CumulativeReportScreenState extends State<CumulativeReportScreen> {
   bool _loading = true;
 
   late final SectionAnalysis _worstSection;
+  late final bool _allSectionsSameCategory;
 
   late TextEditingController _indicationCtrl;
   late TextEditingController _findingsCtrl;
@@ -35,6 +37,7 @@ class _CumulativeReportScreenState extends State<CumulativeReportScreen> {
   void initState() {
     super.initState();
     _worstSection = _findWorstSection();
+    _allSectionsSameCategory = _checkAllSameCategory();
     _indicationCtrl = TextEditingController();
     _findingsCtrl = TextEditingController();
     _biRadsCtrl = TextEditingController();
@@ -44,11 +47,26 @@ class _CumulativeReportScreenState extends State<CumulativeReportScreen> {
   }
 
   SectionAnalysis _findWorstSection() {
-    return widget.sections.reduce((a, b) =>
-        a.result.classification.biRads.ordinal >=
-                b.result.classification.biRads.ordinal
-            ? a
-            : b);
+    return widget.sections.reduce((a, b) {
+      final aOrd = a.result.classification.biRads.ordinal;
+      final bOrd = b.result.classification.biRads.ordinal;
+      if (aOrd != bOrd) return aOrd > bOrd ? a : b;
+      // Tiebreak on malignant probability — higher value is more concerning.
+      return a.result.classification.malignantProb >=
+              b.result.classification.malignantProb
+          ? a
+          : b;
+    });
+  }
+
+  /// True when every section shares the same BI-RADS category — in this
+  /// case there is no meaningful "most concerning" section to highlight.
+  bool _checkAllSameCategory() {
+    if (widget.sections.length <= 1) return true;
+    final firstOrd =
+        widget.sections.first.result.classification.biRads.ordinal;
+    return widget.sections
+        .every((s) => s.result.classification.biRads.ordinal == firstOrd);
   }
 
   Future<void> _generateReport() async {
@@ -193,8 +211,10 @@ class _CumulativeReportScreenState extends State<CumulativeReportScreen> {
                   fontSize: 18, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 4),
           Text(
-            '${widget.sections.length} sections examined  ·  '
-            'Most concerning: Section ${_worstSection.sectionIndex + 1}',
+            _allSectionsSameCategory
+                ? '${widget.sections.length} sections examined  ·  All sections similar'
+                : '${widget.sections.length} sections examined  ·  '
+                    'Most concerning: Section ${_worstSection.sectionIndex + 1}',
             style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
         ],
@@ -204,7 +224,8 @@ class _CumulativeReportScreenState extends State<CumulativeReportScreen> {
 
   Widget _buildSectionCard(int index, SectionAnalysis section) {
     final cls = section.result.classification;
-    final isWorst = section == _worstSection;
+    // Only highlight as "most concerning" when there's a genuine difference.
+    final isWorst = section == _worstSection && !_allSectionsSameCategory;
     final color = switch (cls.predictedIndex) {
       1 => Colors.red,
       0 => Colors.orange,
@@ -223,18 +244,44 @@ class _CumulativeReportScreenState extends State<CumulativeReportScreen> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // Thumbnail
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: section.overlayBytes != null
-                  ? Image.memory(section.overlayBytes!,
-                      width: 64, height: 64, fit: BoxFit.cover)
-                  : Container(
-                      width: 64,
-                      height: 64,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.image, color: Colors.grey),
+            // Tappable thumbnail → full-screen overlay viewer
+            GestureDetector(
+              onTap: section.overlayBytes != null
+                  ? () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ImageViewerScreen(
+                            imageBytes: section.overlayBytes!,
+                            title:
+                                'Section ${index + 1} — ${cls.predictedClass}',
+                          ),
+                        ),
+                      )
+                  : null,
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: section.overlayBytes != null
+                        ? Image.memory(section.overlayBytes!,
+                            width: 64, height: 64, fit: BoxFit.cover)
+                        : Container(
+                            width: 64,
+                            height: 64,
+                            color: Colors.grey.shade200,
+                            child:
+                                const Icon(Icons.image, color: Colors.grey),
+                          ),
+                  ),
+                  if (section.overlayBytes != null)
+                    const Positioned(
+                      bottom: 2,
+                      right: 2,
+                      child: Icon(Icons.zoom_in,
+                          size: 14, color: Colors.white),
                     ),
+                ],
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

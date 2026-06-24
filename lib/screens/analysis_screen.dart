@@ -8,6 +8,7 @@ import '../services/onnx_inference_service.dart';
 import '../services/overlay_renderer.dart';
 import '../widgets/confidence_bar_widget.dart';
 import '../widgets/loading_overlay_widget.dart';
+import 'image_viewer_screen.dart';
 
 class AnalysisScreen extends StatefulWidget {
   final String imagePath;
@@ -99,9 +100,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         ),
         const SizedBox(height: 16),
         if (_overlayBytes != null && _overlayBytes!.isNotEmpty)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.memory(_overlayBytes!, height: 300, fit: BoxFit.contain),
+          _TappableImage(
+            imageBytes: _overlayBytes!,
+            title: 'Overlay — ${_result!.classification.predictedClass}',
           )
         else
           Image.file(File(widget.imagePath), height: 300, fit: BoxFit.contain),
@@ -168,6 +169,53 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           label: const Text('Generate Report'),
         ),
       ],
+    );
+  }
+}
+
+/// Overlay image that opens a full-screen viewer on tap.
+class _TappableImage extends StatelessWidget {
+  final Uint8List imageBytes;
+  final String title;
+
+  const _TappableImage({required this.imageBytes, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ImageViewerScreen(imageBytes: imageBytes, title: title),
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(imageBytes, height: 300, fit: BoxFit.contain),
+          ),
+          Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.zoom_in, size: 14, color: Colors.white),
+                SizedBox(width: 4),
+                Text('Tap to examine',
+                    style: TextStyle(color: Colors.white, fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
