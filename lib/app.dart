@@ -11,6 +11,9 @@ import 'screens/report_screen.dart';
 import 'screens/export_screen.dart';
 import 'screens/probe_connect_screen.dart';
 import 'screens/probe_imaging_screen.dart';
+import 'screens/multi_analysis_screen.dart';
+import 'screens/cumulative_report_screen.dart';
+import 'models/section_analysis.dart';
 import 'services/butterfly_probe_service.dart';
 
 class App extends StatelessWidget {
@@ -79,6 +82,22 @@ class App extends StatelessWidget {
             }
             return MaterialPageRoute(
               builder: (_) => ProbeImagingScreen(service: service),
+            );
+          case '/multi-analysis':
+            final paths = settings.arguments as List<String>?;
+            if (paths == null || paths.isEmpty) {
+              return MaterialPageRoute(builder: (_) => const SplashScreen());
+            }
+            return MaterialPageRoute(
+              builder: (_) => MultiAnalysisScreen(imagePaths: paths),
+            );
+          case '/cumulative-report':
+            final sections = settings.arguments as List<SectionAnalysis>?;
+            if (sections == null || sections.isEmpty) {
+              return MaterialPageRoute(builder: (_) => const SplashScreen());
+            }
+            return MaterialPageRoute(
+              builder: (_) => CumulativeReportScreen(sections: sections),
             );
           default:
             return MaterialPageRoute(builder: (_) => const SplashScreen());

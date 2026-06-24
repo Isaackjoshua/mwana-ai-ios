@@ -198,6 +198,118 @@ class LocalGemmaReportService {
     }
   }
 
+  // ── Multi-section cumulative report ────────────────────────────────────────
+
+  /// Generates a single BI-RADS structured report summarising all [results]
+  /// from a multi-section probe examination.
+  ///
+  /// Uses Gemma if available; falls back to a deterministic template.
+  Future<ReportResult> generateCumulativeReport(
+      List<InferenceResult> results) async {
+    assert(results.isNotEmpty);
+    try {
+      final prompt = _buildCumulativePrompt(results);
+      final model = await FlutterGemma.getActiveModel(maxTokens: _maxTokens);
+      try {
+        final chat =
+            await model.createChat(systemInstruction: _systemInstruction);
+        await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
+        final response = await chat.generateChatResponse();
+        final text = response is TextResponse ? response.token : '';
+        return parseResponse(text);
+      } finally {
+        await model.close();
+      }
+    } catch (_) {
+      return _templateCumulativeReport(results);
+    }
+  }
+
+  String _buildCumulativePrompt(List<InferenceResult> results) {
+    final worst = _worstResult(results);
+    final worstIndex = results.indexOf(worst);
+    final sb = StringBuffer();
+
+    sb.writeln('Multi-section breast ultrasound — '
+        '${results.length} sections analysed (ResNet50 U-Net v10, ONNX FP32).\n');
+
+    for (int i = 0; i < results.length; i++) {
+      final cls = results[i].classification;
+      sb.writeln('Section ${i + 1}: ${cls.predictedClass}  '
+          '[Benign ${(cls.benignProb * 100).toStringAsFixed(1)}%  '
+          'Malignant ${(cls.malignantProb * 100).toStringAsFixed(1)}%  '
+          'Normal ${(cls.normalProb * 100).toStringAsFixed(1)}%]  '
+          '— ${cls.biRads.label}');
+    }
+
+    final wcls = worst.classification;
+    sb.writeln(
+        '\nMost concerning section: ${worstIndex + 1} — ${wcls.biRads.label}. '
+        'Malignant probability: ${(wcls.malignantProb * 100).toStringAsFixed(1)}%.\n');
+
+    sb.writeln('Generate a cumulative ACR BI-RADS structured report covering '
+        'all ${results.length} sections. Highlight Section ${worstIndex + 1} '
+        'as the most concerning finding. Overall BI-RADS category must reflect '
+        'the most suspicious section.\n'
+        'Use EXACTLY these headers on their own lines:\n'
+        'CLINICAL INDICATION:\nFINDINGS:\nBI-RADS ASSESSMENT:\n'
+        'IMPRESSION:\nRECOMMENDATION:\nDISCLAIMER:');
+
+    return sb.toString();
+  }
+
+  ReportResult _templateCumulativeReport(List<InferenceResult> results) {
+    final worst = _worstResult(results);
+    final worstIndex = results.indexOf(worst);
+    final wcls = worst.classification;
+    final n = results.length;
+
+    final malignantCount =
+        results.where((r) => r.classification.predictedIndex == 1).length;
+    final benignCount =
+        results.where((r) => r.classification.predictedIndex == 0).length;
+    final normalCount =
+        results.where((r) => r.classification.predictedIndex == 2).length;
+    final wConf = (wcls.probabilities[wcls.predictedIndex] * 100)
+        .toStringAsFixed(1);
+
+    return ReportResult(
+      clinicalIndication:
+          'Multi-section breast ultrasound examination performed using '
+          'AI-assisted ResNet50 U-Net v10 (ONNX FP32). Sectional technique '
+          'applied across $n breast regions.',
+      findings: '$n sections analysed — $malignantCount malignant, '
+          '$benignCount benign, $normalCount normal. '
+          'The most concerning finding was identified in Section '
+          '${worstIndex + 1}: ${wcls.predictedClass} — ${wcls.biRads.label} '
+          '(malignant probability '
+          '${(wcls.malignantProb * 100).toStringAsFixed(1)}%, '
+          'model confidence $wConf%). '
+          'All sections require formal radiologist review for complete '
+          'characterisation.',
+      biRadsAssessment:
+          'Overall: ${wcls.biRads.label} (driven by Section ${worstIndex + 1}). '
+          '${wcls.predictedClass} features with $wConf% model confidence.',
+      impression: '${wcls.biRads.label} — $n-section examination; '
+          'Section ${worstIndex + 1} shows the highest suspicion level. '
+          '${wcls.biRads.recommendation} '
+          'All findings require radiologist confirmation.',
+      recommendation: '${wcls.biRads.recommendation} '
+          'Full radiologist review of all $n sections is required. '
+          'Correlate with clinical examination and prior imaging.',
+      isAiGenerated: false,
+    );
+  }
+
+  static InferenceResult _worstResult(List<InferenceResult> results) {
+    return results.reduce((a, b) =>
+        a.classification.biRads.ordinal >= b.classification.biRads.ordinal
+            ? a
+            : b);
+  }
+
+  // ── Single-result impression ────────────────────────────────────────────────
+
   String _impression(ClassificationResult cls, String conf, String confidenceDesc) {
     switch (cls.predictedIndex) {
       case 1:

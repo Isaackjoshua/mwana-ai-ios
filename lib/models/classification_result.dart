@@ -9,6 +9,19 @@ enum BiRadsCategory {
 }
 
 extension BiRadsCategoryExt on BiRadsCategory {
+  /// Severity ordinal: higher = more suspicious (birads1=0 … birads4c5=5).
+  int get ordinal {
+    const order = [
+      BiRadsCategory.birads1,
+      BiRadsCategory.birads2,
+      BiRadsCategory.birads3,
+      BiRadsCategory.birads4a,
+      BiRadsCategory.birads4b,
+      BiRadsCategory.birads4c5,
+    ];
+    return order.indexOf(this);
+  }
+
   String get label {
     switch (this) {
       case BiRadsCategory.birads1:   return 'BI-RADS 1 — Negative';
