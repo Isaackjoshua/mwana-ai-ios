@@ -88,6 +88,18 @@ class OnnxInferenceService {
       softmax(Float32List.fromList(flippedPass.clsLogits)),
     );
     final predictedIndex = applyMalignantThreshold(avgClsProbs);
+
+    // Detect threshold override: malignant was flagged (≥0.35) but was not
+    // actually the highest-probability class.
+    bool isThresholdOverride = false;
+    if (predictedIndex == 1) {
+      int argmax = 0;
+      for (int i = 1; i < avgClsProbs.length; i++) {
+        if (avgClsProbs[i] > avgClsProbs[argmax]) argmax = i;
+      }
+      isThresholdOverride = argmax != 1;
+    }
+
     final biRads = _biRads.assignBiRads(
       predictedIndex: predictedIndex,
       probabilities: avgClsProbs,
@@ -105,6 +117,7 @@ class OnnxInferenceService {
         predictedIndex: predictedIndex,
         probabilities: avgClsProbs,
         biRads: biRads,
+        isThresholdOverride: isThresholdOverride,
       ),
       segmentation: SegmentationResult(
         binaryMask: binaryMask,

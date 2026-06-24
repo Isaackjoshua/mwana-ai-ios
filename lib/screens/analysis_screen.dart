@@ -118,21 +118,38 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 ),
                 Text(cls.biRads.label),
                 const SizedBox(height: 16),
-                ConfidenceBarWidget(
-                  label: 'Benign',
-                  probability: cls.benignProb,
-                  isSelected: cls.predictedIndex == 0,
-                ),
-                ConfidenceBarWidget(
-                  label: 'Malignant',
-                  probability: cls.malignantProb,
-                  isSelected: cls.predictedIndex == 1,
-                ),
-                ConfidenceBarWidget(
-                  label: 'Normal',
-                  probability: cls.normalProb,
-                  isSelected: cls.predictedIndex == 2,
-                ),
+                ...cls.sortedBars().map((b) => ConfidenceBarWidget(
+                      label: b.label,
+                      probability: b.probability,
+                      isSelected: b.isPredicted,
+                    )),
+                if (cls.isThresholdOverride) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            size: 16, color: Colors.orange),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Malignant flagged via sensitivity threshold (≥35%). '
+                            'Another class had higher raw probability — '
+                            'always require radiologist review.',
+                            style:
+                                TextStyle(fontSize: 11, color: Colors.orange),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

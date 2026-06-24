@@ -269,11 +269,29 @@ class _CumulativeReportScreenState extends State<CumulativeReportScreen> {
                       style: const TextStyle(
                           fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 4),
-                  ConfidenceBarWidget(
-                    label: 'Malignant',
-                    probability: cls.malignantProb,
-                    isSelected: cls.predictedIndex == 1,
-                  ),
+                  ...cls.sortedBars().map((b) => ConfidenceBarWidget(
+                        label: b.label,
+                        probability: b.probability,
+                        isSelected: b.isPredicted,
+                      )),
+                  if (cls.isThresholdOverride)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              size: 12, color: Colors.orange),
+                          SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Malignant flagged via sensitivity threshold',
+                              style: TextStyle(
+                                  fontSize: 10, color: Colors.orange),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

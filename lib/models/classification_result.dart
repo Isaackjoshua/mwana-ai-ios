@@ -56,10 +56,16 @@ class ClassificationResult {
   /// BI-RADS category assigned by BiRadsService.
   final BiRadsCategory biRads;
 
+  /// True when the malignant sensitivity threshold (≥35%) overrode the
+  /// argmax — i.e. malignant was not the highest-probability class but was
+  /// still predicted for clinical safety.
+  final bool isThresholdOverride;
+
   const ClassificationResult({
     required this.predictedIndex,
     required this.probabilities,
     required this.biRads,
+    this.isThresholdOverride = false,
   });
 
   String get predictedClass {
@@ -71,4 +77,24 @@ class ClassificationResult {
   double get benignProb    => probabilities[0];
   double get malignantProb => probabilities[1];
   double get normalProb    => probabilities[2];
+
+  /// Returns all three classes in display order: the predicted class first,
+  /// then the remaining two sorted by probability descending.
+  ///
+  /// Use this for confidence-bar lists so the prediction is always visually
+  /// first, avoiding the contradiction where a taller bar belongs to a
+  /// non-predicted class.
+  List<({String label, double probability, bool isPredicted})> sortedBars() {
+    final items = [
+      (label: 'Benign',    probability: benignProb,    isPredicted: predictedIndex == 0),
+      (label: 'Malignant', probability: malignantProb, isPredicted: predictedIndex == 1),
+      (label: 'Normal',    probability: normalProb,    isPredicted: predictedIndex == 2),
+    ];
+    items.sort((a, b) {
+      if (a.isPredicted && !b.isPredicted) return -1;
+      if (!a.isPredicted && b.isPredicted) return 1;
+      return b.probability.compareTo(a.probability);
+    });
+    return items;
+  }
 }
