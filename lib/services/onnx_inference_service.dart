@@ -121,6 +121,7 @@ class OnnxInferenceService {
       ),
       segmentation: SegmentationResult(
         binaryMask: binaryMask,
+        probabilityMap: sigSeg,
         diceScore: diceScore,
       ),
       originalImageBytes: originalBytes,

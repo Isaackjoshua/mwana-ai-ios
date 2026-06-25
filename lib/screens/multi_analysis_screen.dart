@@ -4,6 +4,7 @@ import 'package:image/image.dart' as img;
 import '../models/section_analysis.dart';
 import '../services/onnx_inference_service.dart';
 import '../services/overlay_renderer.dart';
+import '../services/heatmap_renderer.dart';
 
 /// Runs ONNX inference sequentially on every captured probe section and
 /// navigates to /cumulative-report when all sections are complete.
@@ -18,6 +19,7 @@ class MultiAnalysisScreen extends StatefulWidget {
 class _MultiAnalysisScreenState extends State<MultiAnalysisScreen> {
   final _inferenceService = OnnxInferenceService();
   final _overlayRenderer = OverlayRenderer();
+  final _heatmapRenderer = HeatmapRenderer();
 
   int _currentIndex = 0;
   final List<SectionAnalysis> _results = [];
@@ -40,6 +42,7 @@ class _MultiAnalysisScreenState extends State<MultiAnalysisScreen> {
 
         final raw = await img.decodeImageFile(path);
         Uint8List? overlayBytes;
+        Uint8List? heatmapBytes;
         if (raw != null) {
           final rendered = _overlayRenderer.renderOverlay(
             originalImage: raw,
@@ -50,6 +53,12 @@ class _MultiAnalysisScreenState extends State<MultiAnalysisScreen> {
             opacity: 0.5,
           );
           if (rendered.isNotEmpty) overlayBytes = rendered;
+
+          final heat = _heatmapRenderer.renderHeatmap(
+            originalImage: raw,
+            probabilityMap: result.segmentation.probabilityMap,
+          );
+          if (heat.isNotEmpty) heatmapBytes = heat;
         }
 
         if (!mounted) return;
@@ -57,6 +66,7 @@ class _MultiAnalysisScreenState extends State<MultiAnalysisScreen> {
               sectionIndex: i,
               result: result,
               overlayBytes: overlayBytes,
+              heatmapBytes: heatmapBytes,
             )));
       } catch (e) {
         if (!mounted) return;

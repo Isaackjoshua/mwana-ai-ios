@@ -7,12 +7,16 @@ class SectionAnalysis {
   final int sectionIndex;
   final InferenceResult result;
 
-  /// PNG-encoded segmentation overlay, or null if rendering failed.
+  /// PNG-encoded segmentation overlay with bounding box, or null if rendering failed.
   final Uint8List? overlayBytes;
+
+  /// PNG-encoded jet-colourmap heatmap (Grad-CAM-style probability map).
+  final Uint8List? heatmapBytes;
 
   const SectionAnalysis({
     required this.sectionIndex,
     required this.result,
     this.overlayBytes,
+    this.heatmapBytes,
   });
 }

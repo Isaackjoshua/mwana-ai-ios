@@ -6,6 +6,7 @@ import '../models/classification_result.dart';
 import '../models/inference_result.dart';
 import '../services/onnx_inference_service.dart';
 import '../services/overlay_renderer.dart';
+import '../services/heatmap_renderer.dart';
 import '../widgets/confidence_bar_widget.dart';
 import '../widgets/loading_overlay_widget.dart';
 import 'image_viewer_screen.dart';
@@ -21,9 +22,11 @@ class AnalysisScreen extends StatefulWidget {
 class _AnalysisScreenState extends State<AnalysisScreen> {
   final _inferenceService = OnnxInferenceService();
   final _overlayRenderer = OverlayRenderer();
+  final _heatmapRenderer = HeatmapRenderer();
 
   InferenceResult? _result;
   Uint8List? _overlayBytes;
+  Uint8List? _heatmapBytes;
   bool _loading = true;
   String? _error;
 
@@ -48,11 +51,18 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               opacity: 0.5,
             )
           : Uint8List(0);
+      final heatmapBytes = raw != null
+          ? _heatmapRenderer.renderHeatmap(
+              originalImage: raw,
+              probabilityMap: result.segmentation.probabilityMap,
+            )
+          : Uint8List(0);
 
       if (!mounted) return;
       setState(() {
         _result = result;
-        _overlayBytes = overlayBytes;
+        _overlayBytes = overlayBytes.isNotEmpty ? overlayBytes : null;
+        _heatmapBytes = heatmapBytes.isNotEmpty ? heatmapBytes : null;
         _loading = false;
       });
     } catch (e) {
@@ -99,10 +109,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        if (_overlayBytes != null && _overlayBytes!.isNotEmpty)
+        if (_overlayBytes != null || _heatmapBytes != null)
           _TappableImage(
-            imageBytes: _overlayBytes!,
-            title: 'Overlay — ${_result!.classification.predictedClass}',
+            originalBytes: _result!.originalImageBytes,
+            boundingBoxBytes: _overlayBytes,
+            heatmapBytes: _heatmapBytes,
+            title: _result!.classification.predictedClass,
           )
         else
           Image.file(File(widget.imagePath), height: 300, fit: BoxFit.contain),
@@ -173,12 +185,22 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 }
 
-/// Overlay image that opens a full-screen viewer on tap.
+/// Shows the bounding-box overlay as a card preview; tapping opens the
+/// full-screen three-way toggle viewer (Original / Bounding Box / Heatmap).
 class _TappableImage extends StatelessWidget {
-  final Uint8List imageBytes;
+  final Uint8List originalBytes;
+  final Uint8List? boundingBoxBytes;
+  final Uint8List? heatmapBytes;
   final String title;
 
-  const _TappableImage({required this.imageBytes, required this.title});
+  const _TappableImage({
+    required this.originalBytes,
+    required this.title,
+    this.boundingBoxBytes,
+    this.heatmapBytes,
+  });
+
+  Uint8List get _previewBytes => boundingBoxBytes ?? originalBytes;
 
   @override
   Widget build(BuildContext context) {
@@ -186,8 +208,12 @@ class _TappableImage extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              ImageViewerScreen(imageBytes: imageBytes, title: title),
+          builder: (_) => ImageViewerScreen(
+            originalBytes: originalBytes,
+            boundingBoxBytes: boundingBoxBytes,
+            heatmapBytes: heatmapBytes,
+            title: title,
+          ),
         ),
       ),
       child: Stack(
@@ -195,7 +221,7 @@ class _TappableImage extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.memory(imageBytes, height: 300, fit: BoxFit.contain),
+            child: Image.memory(_previewBytes, height: 300, fit: BoxFit.contain),
           ),
           Container(
             margin: const EdgeInsets.all(8),
@@ -207,9 +233,9 @@ class _TappableImage extends StatelessWidget {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.zoom_in, size: 14, color: Colors.white),
+                Icon(Icons.tune, size: 14, color: Colors.white),
                 SizedBox(width: 4),
-                Text('Tap to examine',
+                Text('Tap to examine / toggle views',
                     style: TextStyle(color: Colors.white, fontSize: 11)),
               ],
             ),

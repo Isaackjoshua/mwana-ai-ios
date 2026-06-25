@@ -246,12 +246,14 @@ class _CumulativeReportScreenState extends State<CumulativeReportScreen> {
           children: [
             // Tappable thumbnail → full-screen overlay viewer
             GestureDetector(
-              onTap: section.overlayBytes != null
+              onTap: (section.overlayBytes != null || section.heatmapBytes != null)
                   ? () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => ImageViewerScreen(
-                            imageBytes: section.overlayBytes!,
+                            originalBytes: section.result.originalImageBytes,
+                            boundingBoxBytes: section.overlayBytes,
+                            heatmapBytes: section.heatmapBytes,
                             title:
                                 'Section ${index + 1} — ${cls.predictedClass}',
                           ),
